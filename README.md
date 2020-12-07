@@ -1,3 +1,5 @@
+Development in progress....
+
 # MSApy - Matrix Structural Analysis in Python
 
 MSApy is a python package built for simple 3-D structural analysis. It is an implementation of the direct stiffness method which allows for the analysis of any three-dimensional truss or frame structures. Perform quick and simple analyses right in your browser (e.g. Jupyter notebook) or any IDE of your choice.
