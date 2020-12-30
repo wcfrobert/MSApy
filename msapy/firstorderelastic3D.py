@@ -116,19 +116,7 @@ class Node_3d1el:
         x = [self.node_coord[0]]
         y = [self.node_coord[1]]
         z = [self.node_coord[2]]
-        node_color = 'grey'
-        plot_data = go.Scatter3d(
-            x=x,
-            y=y,
-            z=z,
-            mode='markers',
-            marker = dict(size = 1,color = 'grey'))
-        fig.add_trace(plot_data)
-        # Plot deformed structure
-        node_coord_new_scaled = self.node_coord + self.node_disp[0:3]*SCALE
-        x = [node_coord_new_scaled[0]]
-        y = [node_coord_new_scaled[1]]
-        z = [node_coord_new_scaled[2]]
+
         nodeDOF_set = set(self.node_DOF)
         load_vector = nodal_load[self.node_number-1,:]
         hovertemplate ='<b>%{text}</b><extra></extra>'
@@ -155,12 +143,28 @@ class Node_3d1el:
                 node_color = 'green'
             else:
                 node_color = 'orange'
+
         plot_data = go.Scatter3d(
             x=x,
             y=y,
             z=z,
             mode='markers',
-            marker = dict(size = 3,color = node_color),
+            marker = dict(size = 3,color = 'grey'),
+            hovertemplate = hovertemplate,
+            text = [text])
+        fig.add_trace(plot_data)
+
+        # Plot deformed structure
+        node_coord_new_scaled = self.node_coord + self.node_disp[0:3]*SCALE
+        x = [node_coord_new_scaled[0]]
+        y = [node_coord_new_scaled[1]]
+        z = [node_coord_new_scaled[2]]
+        plot_data = go.Scatter3d(
+            x=x,
+            y=y,
+            z=z,
+            mode='markers',
+            marker = dict(size = 2,color = node_color),
             hovertemplate = hovertemplate,
             text = [text])
         fig.add_trace(plot_data)
@@ -328,7 +332,7 @@ class Element_3d1el():
         Link: http://people.duke.edu/~hpgavin/cee421/frame-finite-def.pdf
 
         Pinned element stiffness does not include shear deformation.
-        shear deformation effect is not as pronounced in fixed-pin
+        Shear deformation effect is not as pronounced in fixed-pin
         members. Refer to documentation for more details
         """
         A = self.A
@@ -342,7 +346,6 @@ class Element_3d1el():
         E = self.E
         theta_y = 12*E*Iz/G/Ayy/L/L 
         theta_z = 12*E*Iy/G/Azz/L/L
-        self.a = theta_z
         # decoupled stiffness matrices
         k_axial = np.array([
             [E*A/L,-E*A/L],
@@ -360,32 +363,33 @@ class Element_3d1el():
             [-6*E*Iy/L**2/(1+theta_z), (4+theta_z)*E*Iy/L/(1+theta_z), 6*E*Iy/L**2/(1+theta_z), (2-theta_z)*E*Iy/L/(1+theta_z)],
             [-12*E*Iy/L**3/(1+theta_z), 6*E*Iy/L**2/(1+theta_z), 12*E*Iy/L**3/(1+theta_z), 6*E*Iy/L**2/(1+theta_z)],
             [-6*E*Iy/L**2/(1+theta_z), (2-theta_z)*E*Iy/L/(1+theta_z), 6*E*Iy/L**2/(1+theta_z), (4+theta_z)*E*Iy/L/(1+theta_z)]])
-        # Adjustment for moment-release Chapter 7 (Kassimali,2011)
+        # Adjustment for moment-release Chapter 7 (Kassimali,2011). Note I am using 1e-9 instead of 0 to distinguish
+        # released DOF. Otherwise shape error during for COO and CSR sparse matrix construction
         if self.release[0]==1 and self.release[1]==1:
             k_flexureZ = np.zeros([4,4])
             k_flexureY = np.zeros([4,4])
         elif self.release[0]==1:
             k_flexureZ = np.array([
-                [3*E*Iz/L**3, 0, -3*E*Iz/L**3, 3*E*Iz/L**2],
-                [0, 0, 0, 0],
-                [-3*E*Iz/L**3, 0, 3*E*Iz/L**2, -3*E*Iz/L**2],
-                [3*E*Iz/L**2, 0, -3*E*Iz/L**2, 3*E*Iz/L]])
+                [3*E*Iz/L**3, 1e-9, -3*E*Iz/L**3, 3*E*Iz/L**2],
+                [1e-9, 1e-9, 1e-9, 1e-9],
+                [-3*E*Iz/L**3, 1e-9, 3*E*Iz/L**2, -3*E*Iz/L**2],
+                [3*E*Iz/L**2, 1e-9, -3*E*Iz/L**2, 3*E*Iz/L]])
             k_flexureY = np.array([
-                [3*E*Iy/L**3, 0, -3*E*Iy/L**3, -3*E*Iy/L**2],
-                [0, 0, 0, 0],
-                [-3*E*Iy/L**3, 0, 3*E*Iy/L**2, 3*E*Iy/L**2],
-                [-3*E*Iy/L**2, 0, 3*E*Iy/L**2, 3*E*Iy/L]])
+                [3*E*Iy/L**3, 1e-9, -3*E*Iy/L**3, -3*E*Iy/L**2],
+                [1e-9, 1e-9, 1e-9, 1e-9],
+                [-3*E*Iy/L**3, 1e-9, 3*E*Iy/L**2, 3*E*Iy/L**2],
+                [-3*E*Iy/L**2, 1e-9, 3*E*Iy/L**2, 3*E*Iy/L]])
         elif self.release[1]==1:
             k_flexureZ = np.array([
-                [3*E*Iz/L**3, 3*E*Iz/L**2, -3*E*Iz/L**3, 0],
-                [3*E*Iz/L**2, 3*E*Iz/L, -3*E*Iz/L**2, 0],
-                [-3*E*Iz/L**3, -3*E*Iz/L**2, 3*E*Iz/L**3, 0],
-                [0, 0, 0, 0]])
+                [3*E*Iz/L**3, 3*E*Iz/L**2, -3*E*Iz/L**3, 1e-9],
+                [3*E*Iz/L**2, 3*E*Iz/L, -3*E*Iz/L**2, 1e-9],
+                [-3*E*Iz/L**3, -3*E*Iz/L**2, 3*E*Iz/L**3, 1e-9],
+                [1e-9, 1e-9, 1e-9, 1e-9]])
             k_flexureY = np.array([
-                [3*E*Iy/L**3, -3*E*Iy/L**2, -3*E*Iy/L**3, 0],
-                [-3*E*Iy/L**2, 3*E*Iy/L, 3*E*Iy/L**2, 0],
-                [-3*E*Iy/L**3, 3*E*Iy/L**2, 3*E*Iy/L**3, 0],
-                [0, 0, 0, 0]])
+                [3*E*Iy/L**3, -3*E*Iy/L**2, -3*E*Iy/L**3, 1e-9],
+                [-3*E*Iy/L**2, 3*E*Iy/L, 3*E*Iy/L**2, 1e-9],
+                [-3*E*Iy/L**3, 3*E*Iy/L**2, 3*E*Iy/L**3, 1e-9],
+                [1e-9, 1e-9, 1e-9, 1e-9]])
         # Combine into global stiffness matrix
         k_local = np.zeros([12,12])
         k_local[np.ix_([0,6],[0,6])] = k_axial
@@ -514,24 +518,20 @@ class Element_3d1el():
         u5_y=self.d_local[8]
         u6_y=self.d_local[10]
         if self.release[0]==1 and self.release[1]==1:
-            self.d_local[4]=0(u5_y-u2_y)/self.L -self.L/6/self.E/self.Iy*(2*FMb_y-FMe_y)
-            self.d_local[5]=(u5_z-u2_z)/self.L -self.L/6/self.E/self.Iz*(2*FMb_z-FMe_z)
-            self.d_local[10]=0(u5_y-u2_y)/self.L -self.L/6/self.E/self.Iy*(2*FMe_y-FMb_y)
-            self.d_local[11]=(u5_z-u2_z)/self.L -self.L/6/self.E/self.Iz*(2*FMe_z-FMb_z)
-            self.d_global[10]=self.d_local[10]
-            self.d_global[4]=self.d_local[4]
-            self.d_global[5]=self.d_local[5]
-            self.d_global[11]=self.d_local[11]
+            self.rot_yi=(u5_y-u2_y)/self.L -self.L/6/self.E/self.Iy*(2*FMb_y-FMe_y)
+            self.rot_zi=(u5_z-u2_z)/self.L -self.L/6/self.E/self.Iz*(2*FMb_z-FMe_z)
+            self.rot_yj=(u5_y-u2_y)/self.L -self.L/6/self.E/self.Iy*(2*FMe_y-FMb_y)
+            self.rot_zj=(u5_z-u2_z)/self.L -self.L/6/self.E/self.Iz*(2*FMe_z-FMb_z)
         elif self.release[0]==1:
-            self.d_local[4]=3/2/self.L*(u5_y-u2_y) -u6_y/2 -self.L/4/self.E/self.Iy*FMb_y
-            self.d_local[5]=3/2/self.L*(u5_z-u2_z) -u6_z/2 -self.L/4/self.E/self.Iz*FMb_z
-            self.d_global[4]=self.d_local[4]
-            self.d_global[5]=self.d_local[5]
+            self.rot_yj=self.d_local[10]
+            self.rot_zj=self.d_local[11]
+            self.rot_yi=3/2/self.L*(u5_y-u2_y) -u6_y/2 -self.L/4/self.E/self.Iy*FMb_y
+            self.rot_zi=3/2/self.L*(u5_z-u2_z) -u6_z/2 -self.L/4/self.E/self.Iz*FMb_z
         elif self.release[1]==1:
-            self.d_local[10]=3/2/self.L*(u5_y-u2_y)-u3_y/2- self.L/4/self.E/self.Iy*FMe_y
-            self.d_local[11]=3/2/self.L*(u5_z-u2_z)-u3_z/2- self.L/4/self.E/self.Iz*FMe_z
-            self.d_global[10]=self.d_local[10]
-            self.d_global[11]=self.d_local[11]
+            self.rot_yi=self.d_local[4]
+            self.rot_zi=self.d_local[5]
+            self.rot_yj=3/2/self.L*(u5_y-u2_y)-u3_y/2- self.L/4/self.E/self.Iy*FMe_y
+            self.rot_zj=3/2/self.L*(u5_z-u2_z)-u3_z/2- self.L/4/self.E/self.Iz*FMe_z
 
     def plot(self,fig):
         # for visualization prior to solving
@@ -606,7 +606,8 @@ class Element_3d1el():
             y=yy,
             z=zz,
             mode='markers',
-            marker = dict(size = 3, color = user_color, symbol='circle-open'))
+            marker = dict(size = 3, color = user_color, symbol='circle-open'),
+            hoverinfo = 'skip')
         fig.add_trace(plot_data)
 
     def plot_results(self,fig,plot_flag,SCALE,force_SCALE):
@@ -911,7 +912,10 @@ class Structure_3d1el():
             result matrices directly. Alternatively, there are a variety of options
             for visualization. See documentation for detail.
     """
-    def __init__(self,coord,fixity,connectivity,nodal_load,member_load,section,self_weight_factor=[0,0,0]):
+    def __init__(self,coord,fixity,connectivity,nodal_load,member_load,section,self_weight_factor=[0,0,0],shear_deformation=True,print_flag=True):
+        self.print_flag = print_flag
+        self.self_weight_factor = self_weight_factor
+        self.shear_deformation = shear_deformation
         self.coord = np.array(coord)
         self.fixity = np.array(fixity)
         self.N_node = len(coord)
@@ -929,7 +933,8 @@ class Structure_3d1el():
         self.REACT = None
         self.ELE_FOR = None
         self.AFLAG = 0
-        print(self)
+        if print_flag:
+            print(self)
 
     def __str__(self):
         print("Structure has been assembled")
@@ -952,7 +957,8 @@ class Structure_3d1el():
         self.force_recovery()
         self.recover_node_results()
         time_end = time.time()
-        print("Analysis Completed! Elapsed time: {:.4f} seconds".format(time_end-time_start))
+        if self.print_flag:
+            print("Analysis Completed! Elapsed time: {:.4f} seconds".format(time_end-time_start))
         self.AFLAG=1
 
     def create_nodes(self):
@@ -972,8 +978,11 @@ class Structure_3d1el():
             end_nodes = np.array([i_node,j_node])
             A = self.section[i,2]
             Ayy = self.section[i,5]
-            Azz = self.section[i,3]
-            Iy,Iz = self.section[i,6],self.section[i,4]
+            Azz = self.section[i,6]
+            if self.shear_deformation == False:
+                Ayy = np.inf
+                Azz = np.inf
+            Iy,Iz = self.section[i,4],self.section[i,3]
             J = self.section[i,9]
             E = self.section[i,7]
             v = self.section[i,8]
@@ -1007,6 +1016,10 @@ class Structure_3d1el():
             row = disp_index[0][i]+1
             col = disp_index[1][i]+1
             dispDOF.append(6*col+row-6)
+        # indices must be sorted for mesh indexing to work properly
+        freeDOF = np.sort(freeDOF)
+        fixedDOF = np.sort(fixedDOF)
+        dispDOF = np.sort(dispDOF)
         return np.array(freeDOF),np.array(fixedDOF),np.array(dispDOF).astype(int)
 
     def assemble_stiffness(self):
@@ -1065,7 +1078,11 @@ class Structure_3d1el():
         fixity_vector = self.fixity.transpose().reshape(self.N_node*6)
         self.dn = fixity_vector[(self.dispDOF-1)]
         # Invert Kff to get nodal displacement
-        self.df = sp.sparse.linalg.cg(self.kff,self.Pf - self.kfn@self.dn)[0]
+        self.df, converge_flag = sp.sparse.linalg.cg(self.kff,self.Pf - self.feff - self.kfn@self.dn)
+        if converge_flag>0:
+            raise RuntimeError(f"CG solver failed to converge after {converge_flag} iterations.\nStructure may be unstable or ill-conditioned")
+        elif converge_flag<0:
+            raise RuntimeError(f"Illegal input or breakdown.\nStructure may be unstable")
         # Assemble DEFL matrix
         self.DEFL = np.zeros(self.N_node*6)
         self.DEFL[np.ix_(self.freeDOF-1)] = self.df
@@ -1109,63 +1126,42 @@ class Structure_3d1el():
         # Plot elements
         for i in range(self.N_element):
             self.element_array[i].plot(fig)
-        # Set up plotly figure
-        my_scene = dict(
-            xaxis = dict(showticklabels=False,gridcolor='#e3e4e6',backgroundcolor='white',showspikes=False,visible=False),
-            yaxis = dict(showticklabels=False,gridcolor='#e3e4e6',backgroundcolor='white',showspikes=False,visible=False),
-            zaxis = dict(showticklabels=False,gridcolor='#e3e4e6',backgroundcolor='white',showspikes=False,visible=False))
-        my_title = {'text': "Hover to see more info." +
-                            "<br>Node: red = fixed; green = free, orange = loaded"+
-                            "<br>Element: orange = loaded",
-                    'y':1,'x':0,'xanchor': 'left','yanchor': 'top'}
-        my_footnote = [dict(xref='paper', yref='paper', x=0.9, y=-0.1, xanchor='right', yanchor='top',showarrow=False,
-                              text='MSApy. Copyright (c) 2020 Robert Wang',
-                              font=dict(family='Arial',size=12,color='rgb(150,150,150)')),
-                        dict(xref='paper', yref='paper', x=0.1, y=0.9, xanchor='left', yanchor='top',showarrow=False,
-                              text="Hover to see more info.",
-                              font=dict(family='Arial',size=12,color='rgb(150,150,150)'))]
-        my_camera = dict(up=dict(x=0,y=1,z=0),center=dict(x=0,y=0,z=0),eye=dict(x=1.25,y=1.25,z=1.25))
-
-        fig.update_layout(scene=my_scene,showlegend=False,hoverlabel=dict(bgcolor="white"),
-        					annotations=my_footnote,scene_camera=my_camera,scene_dragmode='orbit',
-                            margin=dict(l=50,r=50,b=100,t=10,pad=4),
-                            height = 650)
+        # Add some annotations
+        my_footnote = [dict(xref='paper', yref='paper', x=0.9, y=0, xanchor='right', yanchor='top',showarrow=False,
+                              text = 'MSApy. Copyright (c) 2020 RW',
+                              font=dict(family='Arial',size=12,color='rgb(150,150,150)'), align = "right"),
+                        dict(xref='paper', yref='paper', x=0.15, y=1, xanchor='right', yanchor='top',showarrow=False,
+                              text = "Color Legend: <br>Red = fixed, <br>Green = free, <br>Orange = loaded" +
+                                '<br>Hover to see more info.',
+                              font=dict(family='Arial',size=12,color='rgb(150,150,150)'), align = "left")]
+        fig.update_layout(annotations=my_footnote)
         # Setting up camera buttons
         self.camera_buttons(fig)
         return fig
 
-    def plot_results(self, plot_flag='D',PLOT_SCALE=64):
+    def plot_results(self, plot_flag='D',plot_scale=64):
         # Initialize Figure
         fig = go.Figure()
         self.plot_origin_mark(fig)
         # Plot nodes
         for i in range(self.N_node):
-            self.node_array[i].plot_results(fig,set(self.freeDOF),self.nodal_load,self.fixity,PLOT_SCALE)
+            self.node_array[i].plot_results(fig,set(self.freeDOF),self.nodal_load,self.fixity,plot_scale)
         # Set up plot scale if plotting force diagrams
         if plot_flag.upper() == "D":
             force_scale = None
         else:
-            force_scale = self.get_force_scale()
+            force_scale = self.get_force_scale(plot_scale)
         # Plot elements
         for i in range(self.N_element):
-            self.element_array[i].plot_results(fig, plot_flag, PLOT_SCALE, force_scale)
-        # Set up plotly figure
-        myscene = dict(
-            xaxis = dict(showticklabels=False,gridcolor='white',backgroundcolor='white',showspikes=False,visible=False),
-            yaxis = dict(showticklabels=False,gridcolor='white',backgroundcolor='white',showspikes=False,visible=False),
-            zaxis = dict(showticklabels=False,gridcolor='white',backgroundcolor='white',showspikes=False,visible=False))
-        my_footnote = [dict(xref='paper', yref='paper', x=0.9, y=-0.1, xanchor='right', yanchor='top',showarrow=False,
-                              text='MSApy. Copyright (c) 2020 Robert Wang',
+            self.element_array[i].plot_results(fig, plot_flag, plot_scale, force_scale)
+        # Add some annotation
+        my_footnote = [dict(xref='paper', yref='paper', x=0.9, y=0, xanchor='right', yanchor='top',showarrow=False,
+                              text='MSApy. Copyright (c) 2020 RW',
                               font=dict(family='Arial',size=12,color='rgb(150,150,150)')),
-                        dict(xref='paper', yref='paper', x=0.1, y=0.9, xanchor='left', yanchor='top',showarrow=False,
-                              text="Hover to See More Results. <br>Plot Scale x{:d}".format(PLOT_SCALE),
+                        dict(xref='paper', yref='paper', x=0.15, y=1, xanchor='right', yanchor='top',showarrow=False,
+                              text="Hover to see more info. <br>Plot Scale x{:d}".format(plot_scale),
                               font=dict(family='Arial',size=12,color='rgb(150,150,150)'),align="left")]
-        my_camera = dict(up=dict(x=0,y=1,z=0),center=dict(x=0,y=0,z=0),eye=dict(x=1.25,y=1.25,z=1.25))
-
-        fig.update_layout(scene=myscene,showlegend=False,hoverlabel=dict(bgcolor="white"),
-        					annotations=my_footnote,scene_camera=my_camera,scene_dragmode='orbit',
-                            margin=dict(l=50,r=50,b=100,t=10,pad=4),
-                            height = 650)
+        fig.update_layout(annotations=my_footnote)
         # Setting up camera buttons
         self.camera_buttons(fig)
         return fig
@@ -1193,14 +1189,16 @@ class Structure_3d1el():
         return fig
 
     def plot_origin_mark(self,fig):
+        """This function plots the cartesian coordinate marks and set the appropriate drawing scale"""
         # Find longest member length to define appropriate axis scale
-        dx = (max(self.coord[:,0]) - min(self.coord[:,0]))/9
-        dy = (max(self.coord[:,1]) - min(self.coord[:,1]))/9
-        dz = (max(self.coord[:,2]) - min(self.coord[:,2]))/9
+        dx = (max(self.coord[:,0]) - min(self.coord[:,0]))
+        dy = (max(self.coord[:,1]) - min(self.coord[:,1]))
+        dz = (max(self.coord[:,2]) - min(self.coord[:,2]))
+        dmax = max(dx,dy,dz)
         # Plot X (in blue)
         if dx != 0:
             X = go.Scatter3d(
-                x=[0,dx],
+                x=[0,dmax/14],
                 y=[0,0],
                 z=[0,0],
                 mode='lines+text',
@@ -1210,14 +1208,14 @@ class Structure_3d1el():
                 textposition="middle right",
                 textfont=dict(
                     family="Arial",
-                    size=6,
+                    size=8,
                     color="blue"))
             fig.add_trace(X)
         # Plot Y (in red)
         if dy != 0:
             Y = go.Scatter3d(
                 x=[0,0],
-                y=[0,dy],
+                y=[0,dmax/14],
                 z=[0,0],
                 mode='lines+text',
                 hoverinfo = 'skip',
@@ -1226,7 +1224,7 @@ class Structure_3d1el():
                 textposition="top center",
                 textfont=dict(
                     family="Arial",
-                    size=6,
+                    size=8,
                     color="red"))
             fig.add_trace(Y)
         # Plot Z (in green)
@@ -1234,7 +1232,7 @@ class Structure_3d1el():
             Z = go.Scatter3d(
                 x=[0,0],
                 y=[0,0],
-                z=[0,dz],
+                z=[0,dmax/14],
                 mode='lines+text',
                 hoverinfo = 'skip',
                 line=dict(color='green', width=4),
@@ -1242,15 +1240,59 @@ class Structure_3d1el():
                 textposition="middle center",
                 textfont=dict(
                     family="Arial",
-                    size=6,
+                    size=8,
                     color="green"))
             fig.add_trace(Z)
+        # Adjust plot scale to be uniform:
+        fig.update_layout(
+            scene = dict(
+                xaxis = dict(range = [min(self.coord[:,0])-dmax/12, max(self.coord[:,0])+dmax/12]),
+                yaxis = dict(range = [min(self.coord[:,0])-dmax/12, max(self.coord[:,0])+dmax/12]),
+                zaxis = dict(range = [min(self.coord[:,0])-dmax/12, max(self.coord[:,0])+dmax/12])
+            )
+        )
+        # Other layout adjustments
+        myscene = dict(
+            xaxis = dict(showticklabels=False,gridcolor='white',backgroundcolor='white',showspikes=False,visible=False),
+            yaxis = dict(showticklabels=False,gridcolor='white',backgroundcolor='white',showspikes=False,visible=False),
+            zaxis = dict(showticklabels=False,gridcolor='white',backgroundcolor='white',showspikes=False,visible=False))
+        if dz == 0:
+            my_camera = dict(up=dict(x=0,y=1,z=0),center=dict(x=0,y=0,z=0),eye=dict(x=0,y=0,z=2))
+        else:
+            my_camera = dict(up=dict(x=0,y=1,z=0),center=dict(x=0,y=0,z=0),eye=dict(x=1.25,y=1.25,z=1.25))
+        fig.update_layout(scene=myscene,showlegend=False,hoverlabel=dict(bgcolor="white"),
+                            scene_camera=my_camera,scene_dragmode='pan',
+                            margin=dict(l=50,r=50,b=100,t=10,pad=4),
+                            height = 650)
 
-    def get_force_scale(self):
+
+
+
+
+    def get_force_scale(self,user_scale):
         """ 
-        A helper function to set the appropriate size of force diagram plot. The function will loop 
-        through every element to determine the max/min magnitude and set this to
+        A helper function to set the appropriate size of force diagram plot. The function will determine
+        the maximum fixed-end force. Non-max values will be scaled accordining. 
+
+        Returns a vector with scale factors for [A,T,Vy,Mz,Vz,My]. If the maximum value is zero 
+        (e.g. no torsion in the system). The length will be set to zero and nothing will be
+        plotted. 
+
+        In essence, we are normalizing all force values by a maximum
+        For example. A member end has 1200 kip.ft. The maximum in the structure is 2400 kip.ft.
+        This end will be normalized to 0.5, which means it will be half of the longest possible line
         """
+        # force_scale=[]
+        # # determine the maximum length to plot. Similar to the origin mark, use longest member / 9
+        # dx = (max(self.coord[:,0]) - min(self.coord[:,0]))/9
+        # dy = (max(self.coord[:,1]) - min(self.coord[:,1]))/9
+        # dz = (max(self.coord[:,2]) - min(self.coord[:,2]))/9
+        # scaling = user_scale/64
+        # default_scale = max(dx,dy,dz) * scaling
+        # # determine maximum member-end forces
+        # for i in range(N_element):
+        #     self.ELE_FOR[:,0]+
+        # return force_scale
         pass
 
     def camera_buttons(self, fig):
@@ -1284,13 +1326,13 @@ class Structure_3d1el():
                                                 pad={"r": 10, "t": 10},
                                                 showactive=True,
                                                 x=0.1,
-                                                xanchor="left",
+                                                xanchor="center",
                                                 y=0.1,
                                                 yanchor="top")])
 
 
 """HELPER FUNCTIONS BELOW"""
-def excel_preprocessor(file_name):
+def excel_preprocessor(file_name,print_flag=True):
     """
     This is a preprocessor that reads from the input excel sheet and returns
     the appropriate input matrices
@@ -1320,5 +1362,8 @@ def excel_preprocessor(file_name):
     f=pd.read_excel(file_name,sheet_name='section',skiprows=0,usecols='B:K',nrows=N_element)
     f.fillna(0,inplace=True)
     section=f.to_numpy()
-    print("Structure input matrices generated.")
+
+    if print_flag:
+        print("Input matrices generated")
+
     return coord, connectivity, fixity, nodal_load, member_load, section
