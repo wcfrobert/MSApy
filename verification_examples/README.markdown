@@ -50,16 +50,22 @@ The second problem is a simple planar truss, again from the Hibbeler text.
 
 ![](img/P2.png)
 
-| Results           | RISA and MASTAN             | MSApy Output |
-| ----------------- | --------------------------- | ------------ |
-| Reactions         | A: 1000 N,   B: 1000 N      |              |
-| Deflection at C   | dx: 0.24 mm   dy: -1.056 mm |              |
-| Axial Force in BC | 1400 N                      |              |
-| Axial Force in HG | 1000 N                      |              |
-| Axial Force in CG | 800 N                       |              |
-| Axial Force in BG | 566 N                       |              |
+| Results           | RISA and MASTAN             | MSApy Output                |
+| ----------------- | --------------------------- | --------------------------- |
+| Reactions         | A: 1000 N,   B: 1000 N      | A: 1000 N,   B: 1000 N      |
+| Deflection at C   | dx: 0.24 mm   dy: -1.056 mm | dx: 0.24 mm   dy: -1.056 mm |
+| Axial Force in BC | 1400 N                      | 1399.93 N                   |
+| Axial Force in HG | 1000 N                      | 1000.02 N                   |
+| Axial Force in CG | 800 N                       | 799.93 N                    |
+| Axial Force in BG | 566 N                       | 565.56 N                    |
 
-<img src="img/p2b.png" style="zoom:75%;" />
+<img src="img/p2b.png" style="zoom:50%;" />
+
+<img src="img/P2c.png" style="zoom:50%;" />
+
+<img src="img/P2d.png" style="zoom:50%;" />
+
+
 
 ## Problem 3: Simple Frame
 
@@ -91,7 +97,12 @@ A simple single-bay portal frame fixed base.
 
 ## Problem 4: Simple Frame w/ Self-Weight Modifiers
 
+Using the same frame as problem 3, remove all loads and include:
 
+* a self-weight modifier of -1 in Y direction
+* a self-weight modifier of 0.5 in X direction
+
+In both cases, report the reactions as well as displacement at the roof peak.
 
 
 
@@ -104,23 +115,26 @@ The case of frame element and truss element were proved to be working in the pre
 
 <img src="img/P5.png" style="zoom:50%;" />
 
+| Results                  | RISA and MASTAN                                       | MSApy Output                                          |
+| ------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
+| Left Reaction            | Fx:  -6 kips \| Fy:  -3.897 kips \| Mz:  0 kip.in     | Fx:  -6 kips \| Fy:  -3.897 kips \| Mz:  0 kip.in     |
+| Right Reaction           | Fx:  -26 kips \| Fy:  3.897 kips \| Mz:  -2185 kip.in | Fx:  -26 kips \| Fy:  3.897 kips \| Mz:  -2185 kip.in |
+| Roof displacement        | 0.2074 in                                             | 0.2074 in                                             |
+| Moment at top right node | 935 kip.in                                            | 935 kip.in                                            |
 
+<img src="img/P5a.png" style="zoom:50%;" />
 
-
+<img src="img/P5b.png" style="zoom:50%;" />
 
 ## Problem 6: 3-D Truss
 
 
 
-## Problem 6: 3-D Frame
+## Problem 7: 3-D Frame
 
 
 
-## Problem 7: Moment Frame
-
-
-
-## Problem 8: Support Settlement
+## Problem 8: 3-D Grid
 
 
 
@@ -136,13 +150,15 @@ In the first case, an error exception was added in the code to catch ill-conditi
 
 The case of the unstable structure was also caught in the same vein as above.
 
-
-
-## Problem 10: Simple Beam Rotated to Minor Axis Bending
+## Problem 10: Support Settlement
 
 
 
-## Problem 11: Overhang Beam Placed Diagonally
+## Problem 11: Simple Beam Rotated to Minor Axis Bending
+
+
+
+## Problem 12: Overhang Beam Placed Diagonally
 
 
 
